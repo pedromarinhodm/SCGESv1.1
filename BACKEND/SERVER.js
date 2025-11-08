@@ -214,7 +214,7 @@ app.post("/api/entrada", async (req, res) => {
 })
 
 app.post("/api/saida", async (req, res) => {
-  const { produto_id, quantidade, servidor_almoxarifado, setor_responsavel, servidor_retirada } = req.body
+  const { produto_id, quantidade, servidor_almoxarifado, data, setor_responsavel, servidor_retirada } = req.body
 
   if (!produto_id || !quantidade || !servidor_almoxarifado) {
     return res.status(400).json({ error: "Campos obrigatórios ausentes." })
@@ -233,11 +233,19 @@ app.post("/api/saida", async (req, res) => {
     produto.quantidade -= quantidade
     await produto.save()
 
+    // Parse data as local date (yyyy-mm-dd) to avoid timezone issues
+    let dataMovimentacao = new Date()
+    if (data) {
+      const [ano, mes, dia] = data.split('-').map(Number)
+      dataMovimentacao = new Date(ano, mes - 1, dia, 12, 0, 0) // Set to noon to avoid DST issues
+    }
+
     const novaMovimentacao = new Movimentacao({
       produto_id,
       tipo: "saida",
       quantidade,
       servidor_almoxarifado,
+      data: dataMovimentacao,
       setor_responsavel,
       servidor_retirada,
     })

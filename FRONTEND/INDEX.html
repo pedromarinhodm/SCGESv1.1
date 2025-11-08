@@ -29,7 +29,7 @@
   <!-- 🔹 NAVBAR -->
   <nav class="navbar navbar-expand-lg shadow-sm sticky-top gov-navbar">
     <div class="container-fluid">
-      <a class="navbar-brand fw-bold text-light" href="#topo">Almoxarifado</a>
+      <a class="navbar-brand fw-bold text-light" href="#topo">Controle de Estoque</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
         aria-controls="navbarNav" aria-expanded="false" aria-label="Alternar navegação">
         <span class="navbar-toggler-icon"></span>
@@ -48,7 +48,7 @@
 
   <!-- 🔹 CONTEÚDO PRINCIPAL -->
   <div id="topo" class="container py-5">
-    <h1 class="text-center mb-4 titulo-principal">📦 Controle de Estoque</h1>
+    <!--<h1 class="text-center mb-4 titulo-principal">📦 Controle de Estoque</h1>-->
 
     <!-- ========================= ESTOQUE ATUAL ========================= -->
     <div id="produtos" class="card mb-4 shadow-sm">
@@ -180,9 +180,13 @@
             <label for="qtd_mov" class="form-label">Quantidade</label>
             <input type="number" id="qtd_mov" class="form-control" required min="1">
           </div>
-          <div class="col-md-5">
+          <div class="col-md-3">
             <label for="servidor_almoxarifado" class="form-label">Servidor Almoxarifado</label>
             <input type="text" id="servidor_almoxarifado" class="form-control" required>
+          </div>
+          <div class="col-md-2">
+            <label for="data_saida" class="form-label">Data</label>
+            <input type="date" id="data_saida" class="form-control" required>
           </div>
           <div class="col-md-4">
             <label for="setor_responsavel" class="form-label">Setor Responsável</label>

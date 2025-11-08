@@ -40,6 +40,21 @@ document.addEventListener("DOMContentLoaded", () => {
     renderizarProdutos(filtrados)
   })
 
+  // Setar data atual no campo de saída
+  const hoje = new Date()
+  const ano = hoje.getFullYear()
+  const mes = String(hoje.getMonth() + 1).padStart(2, '0')
+  const dia = String(hoje.getDate()).padStart(2, '0')
+  const dataAtual = `${ano}-${mes}-${dia}`
+  document.getElementById("data_saida").value = dataAtual
+
+  // Resetar data para atual após submit
+  document.getElementById("formMovimentacao").addEventListener("submit", () => {
+    setTimeout(() => {
+      document.getElementById("data_saida").value = dataAtual
+    }, 100)
+  })
+
   ativarDestaqueNavbar()
 })
 
@@ -195,6 +210,7 @@ async function registrarMovimentacao(e) {
   const produtoNome = document.getElementById("produto_nome").value.trim()
   const quantidade = Number.parseInt(document.getElementById("qtd_mov").value)
   const servidorAlmoxarifado = document.getElementById("servidor_almoxarifado").value.trim()
+  const dataSaida = document.getElementById("data_saida").value.trim()
   const setorResponsavel = document.getElementById("setor_responsavel").value.trim()
   const servidorRetirada = document.getElementById("servidor_retirada").value.trim()
 
@@ -218,6 +234,7 @@ async function registrarMovimentacao(e) {
         tipo: "saida",
         quantidade,
         servidor_almoxarifado: servidorAlmoxarifado,
+        data: dataSaida,
         setor_responsavel: setorResponsavel,
         servidor_retirada: servidorRetirada,
       }),
