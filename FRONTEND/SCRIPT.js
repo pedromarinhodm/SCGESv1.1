@@ -1,0 +1,453 @@
+// ============================================================
+// 📦 CONTROLE DE ESTOQUE - script.js (versão MongoDB)
+// ============================================================
+
+const API_URL = "http://localhost:3000/api"
+let produtosArr = []
+let movimentacoesArr = []
+const bootstrap = window.bootstrap // Declare the bootstrap variable
+
+document.addEventListener("DOMContentLoaded", () => {
+  carregarProdutos()
+  carregarMovimentacoes()
+
+  // ======= Formulários =======
+  document.getElementById("formEntrada")?.addEventListener("submit", registrarEntradaSimplificada)
+  document.getElementById("formMovimentacao")?.addEventListener("submit", registrarMovimentacao)
+  document.getElementById("formEditarProduto")?.addEventListener("submit", salvarEdicaoProduto)
+
+  // ======= Filtros automáticos do histórico =======
+  const filtros = ["filtroProduto", "filtroTipo", "dataInicio", "dataFim"]
+  filtros.forEach((id) => {
+    document.getElementById(id)?.addEventListener("input", filtrarMovimentacoes)
+    document.getElementById(id)?.addEventListener("change", filtrarMovimentacoes)
+  })
+
+  // ======= Botão limpar filtros =======
+  document.getElementById("btnLimpar")?.addEventListener("click", () => {
+    document.getElementById("filtroProduto").value = ""
+    document.getElementById("filtroTipo").value = ""
+    document.getElementById("dataInicio").value = ""
+    document.getElementById("dataFim").value = ""
+    renderizarMovimentacoes(movimentacoesArr)
+    atualizarDashboard(movimentacoesArr)
+  })
+
+  // ======= Busca de produtos em estoque =======
+  document.getElementById("buscaProduto")?.addEventListener("input", (e) => {
+    const termo = e.target.value.toLowerCase()
+    const filtrados = produtosArr.filter((p) => p.descricao.toLowerCase().includes(termo))
+    renderizarProdutos(filtrados)
+  })
+
+  ativarDestaqueNavbar()
+})
+
+// ============================================================
+// 🗂️ Funções de carregamento (API)
+// ============================================================
+
+async function carregarProdutos() {
+  try {
+    const res = await fetch(`${API_URL}/produtos`)
+    produtosArr = await res.json()
+    renderizarProdutos(produtosArr)
+    atualizarListaProdutos()
+  } catch (err) {
+    console.error("Erro ao carregar produtos:", err)
+  }
+}
+
+async function carregarMovimentacoes() {
+  try {
+    const res = await fetch(`${API_URL}/movimentacoes`)
+    movimentacoesArr = await res.json()
+
+    // Normaliza para o formato esperado, armazenando apenas a data (yyyy-mm-dd)
+    movimentacoesArr = movimentacoesArr.map((m) => ({
+  id: m._id,
+  codigo: m.produto_id?.codigo || null,
+  produto: m.produto_id?.descricao || "Produto removido",
+  tipo: m.tipo === "entrada" ? "Entrada" : "Saída",
+  quantidade: m.quantidade,
+  servidorAlmoxarifado: m.servidor_almoxarifado,
+  setorResponsavel: m.setor_responsavel || "-",
+  servidorRetirada: m.servidor_retirada || "-",
+  data: m.data,
+}))
+
+
+    renderizarMovimentacoes(movimentacoesArr)
+    atualizarDashboard(movimentacoesArr)
+  } catch (err) {
+    console.error("Erro ao carregar movimentações:", err)
+  }
+}
+
+// ============================================================
+// 📋 Renderização das tabelas
+// ============================================================
+
+function renderizarProdutos(lista) {
+  const tbody = document.querySelector("#tabelaProdutos tbody")
+  tbody.innerHTML = ""
+
+  if (!lista.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-muted">Nenhum produto cadastrado</td></tr>`
+    return
+  }
+
+  lista.forEach((produto) => {
+    const tr = document.createElement("tr")
+    tr.innerHTML = `
+      <td>${String(produto.codigo || "").padStart(3, "0")}</td>
+      <td>${produto.descricao}</td>
+      <td>${produto.quantidade}</td>
+      <td>${produto.unidade || "-"}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-primary me-2" onclick="abrirModalEditar('${produto._id}')">Editar</button>
+        <button class="btn btn-sm btn-outline-danger" onclick="excluirProduto('${produto._id}')">Excluir</button>
+      </td>
+    `
+    tbody.appendChild(tr)
+  })
+}
+
+function renderizarMovimentacoes(lista) {
+  const tbody = document.querySelector("#tabelaMovimentacoes tbody")
+  tbody.innerHTML = ""
+
+  if (!lista.length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-muted">Nenhuma movimentação registrada</td></tr>`
+    return
+  }
+
+  lista.forEach((mov) => {
+    const tr = document.createElement("tr")
+    const dataMov = new Date(mov.data)
+    // Ajusta a data para o fuso horário de São Paulo antes de formatar
+    const saoPauloDate = new Date(dataMov.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }))
+    const dataFormatada = saoPauloDate.toLocaleDateString("pt-BR")
+    tr.innerHTML = `
+      <td>${String(mov.codigo || "").padStart(3, "0")}</td>
+      <td>${mov.produto}</td>
+      <td>${mov.tipo}</td>
+      <td>${mov.quantidade}</td>
+      <td>${mov.servidorAlmoxarifado}</td>
+      <td>${mov.setorResponsavel}</td>
+      <td>${mov.servidorRetirada}</td>
+      <td>${dataFormatada}</td>
+    `
+    tbody.appendChild(tr)
+  })
+}
+
+// ============================================================
+// 🧾 Registro de entrada simplificada
+// ============================================================
+
+async function registrarEntradaSimplificada(e) {
+  e.preventDefault()
+
+  const descricao = document.getElementById("entrada_descricao").value.trim()
+  const quantidade = Number.parseInt(document.getElementById("entrada_quantidade").value)
+  const unidade = document.getElementById("entrada_unidade").value.trim()
+  const servidor = document.getElementById("entrada_servidor").value.trim()
+
+  if (!descricao || !quantidade || !servidor) {
+    alert("Preencha todos os campos obrigatórios.")
+    return
+  }
+
+  try {
+    const res = await fetch(`${API_URL}/entrada`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        descricao,
+        quantidade,
+        unidade,
+        servidor_almoxarifado: servidor,
+      }),
+    })
+
+    const data = await res.json()
+    if (res.ok) {
+      alert(data.message || "Entrada registrada com sucesso!")
+      carregarProdutos()
+      carregarMovimentacoes()
+      e.target.reset()
+    } else {
+      alert("Erro: " + (data.error || "Falha ao registrar entrada."))
+    }
+  } catch (err) {
+    console.error("Erro ao registrar entrada:", err)
+  }
+}
+
+// ============================================================
+// 📤 Registro de movimentação (saída)
+// ============================================================
+
+async function registrarMovimentacao(e) {
+  e.preventDefault()
+
+  const produtoNome = document.getElementById("produto_nome").value.trim()
+  const quantidade = Number.parseInt(document.getElementById("qtd_mov").value)
+  const servidorAlmoxarifado = document.getElementById("servidor_almoxarifado").value.trim()
+  const setorResponsavel = document.getElementById("setor_responsavel").value.trim()
+  const servidorRetirada = document.getElementById("servidor_retirada").value.trim()
+
+  const produto = produtosArr.find((p) => p.descricao.toLowerCase() === produtoNome.toLowerCase())
+  if (!produto) {
+    alert("Produto não encontrado no estoque.")
+    return
+  }
+
+  if (quantidade > produto.quantidade) {
+    alert("Quantidade insuficiente em estoque!")
+    return
+  }
+
+  try {
+    const res = await fetch(`${API_URL}/saida`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        produto_id: produto._id,
+        tipo: "saida",
+        quantidade,
+        servidor_almoxarifado: servidorAlmoxarifado,
+        setor_responsavel: setorResponsavel,
+        servidor_retirada: servidorRetirada,
+      }),
+    })
+
+    const data = await res.json()
+    if (res.ok) {
+      alert("Movimentação registrada com sucesso!")
+      carregarProdutos()
+      carregarMovimentacoes()
+      e.target.reset()
+    } else {
+      alert("Erro: " + (data.error || "Falha ao registrar movimentação."))
+    }
+  } catch (err) {
+    console.error("Erro ao registrar movimentação:", err)
+  }
+}
+
+// ============================================================
+// 🔍 Filtro de movimentações (datas sem hora)
+// ============================================================
+
+function filtrarMovimentacoes() {
+  const filtroProduto = document.getElementById("filtroProduto").value.toLowerCase()
+  const filtroTipo = document.getElementById("filtroTipo").value
+  const dataInicio = document.getElementById("dataInicio").value
+  const dataFim = document.getElementById("dataFim").value
+
+  const filtradas = movimentacoesArr.filter((mov) => {
+    const nomeOk = mov.produto.toLowerCase().includes(filtroProduto)
+    const tipoOk = !filtroTipo || mov.tipo === filtroTipo
+
+    let dataOk = true
+
+    if (dataInicio) {
+      // Parse input dates as local dates (not UTC)
+      const [anoInicio, mesInicio, diaInicio] = dataInicio.split("-").map(Number)
+      const inicio = new Date(anoInicio, mesInicio - 1, diaInicio, 0, 0, 0, 0)
+
+      let fim
+      if (dataFim) {
+        const [anoFim, mesFim, diaFim] = dataFim.split("-").map(Number)
+        fim = new Date(anoFim, mesFim - 1, diaFim, 23, 59, 59, 999)
+      } else {
+        fim = new Date(anoInicio, mesInicio - 1, diaInicio, 23, 59, 59, 999)
+      }
+
+      // Convert movement date to local date for comparison
+      const dataMov = new Date(mov.data)
+      const dataMovLocal = new Date(dataMov.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }))
+
+      dataOk = dataMovLocal >= inicio && dataMovLocal <= fim
+    }
+
+    return nomeOk && tipoOk && dataOk
+  })
+
+  renderizarMovimentacoes(filtradas)
+  atualizarDashboard(filtradas)
+}
+
+// ============================================================
+// ⚙️ Edição e exclusão de produtos
+// ============================================================
+
+function abrirModalEditar(id) {
+  const produto = produtosArr.find((p) => p._id === id)
+  if (!produto) return
+
+  document.getElementById("edit_produto_id").value = produto._id
+  document.getElementById("edit_descricao").value = produto.descricao
+  document.getElementById("edit_quantidade").value = produto.quantidade
+  document.getElementById("edit_unidade").value = produto.unidade || ""
+  // 🆕 Novos campos
+  document.getElementById("edit_descricao_complementar").value = produto.descricao_complementar || ""
+  document.getElementById("edit_validade").value = produto.validade || ""
+  document.getElementById("edit_fornecedor").value = produto.fornecedor || ""
+  document.getElementById("edit_numero_processo").value = produto.numero_processo || ""
+  document.getElementById("edit_observacoes").value = produto.observacoes || ""
+
+  new bootstrap.Modal(document.getElementById("modalEditarProduto")).show()
+}
+
+async function salvarEdicaoProduto(e) {
+  e.preventDefault()
+
+  const id = document.getElementById("edit_produto_id").value
+  const descricao = document.getElementById("edit_descricao").value.trim()
+  const quantidade = Number.parseInt(document.getElementById("edit_quantidade").value)
+  const unidade = document.getElementById("edit_unidade").value.trim()
+
+  // 🆕 Novos campos
+  const descricao_complementar = document.getElementById("edit_descricao_complementar").value.trim()
+  const validade = document.getElementById("edit_validade").value.trim()
+  const fornecedor = document.getElementById("edit_fornecedor").value.trim()
+  const numero_processo = document.getElementById("edit_numero_processo").value.trim()
+  const observacoes = document.getElementById("edit_observacoes").value.trim()
+
+  try {
+    const res = await fetch(`${API_URL}/produtos/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        descricao,
+        quantidade,
+        unidade,
+        descricao_complementar,
+        validade,
+        fornecedor,
+        numero_processo,
+        observacoes,
+      }),
+    })
+
+    const data = await res.json()
+    if (res.ok) {
+      alert("✅ Produto atualizado com sucesso!")
+      // 🔁 Atualiza array local com dados retornados
+      const idx = produtosArr.findIndex((p) => p._id === id)
+      if (idx !== -1 && data.produto) produtosArr[idx] = data.produto
+      renderizarProdutos(produtosArr)
+
+      const modal = bootstrap.Modal.getInstance(document.getElementById("modalEditarProduto"))
+      modal.hide()
+    } else {
+      alert("Erro: " + (data.error || "Falha ao atualizar produto."))
+    }
+  } catch (err) {
+    console.error("Erro ao atualizar produto:", err)
+  }
+}
+
+async function excluirProduto(id) {
+  if (!confirm("Deseja realmente excluir este produto?")) return
+  try {
+    const res = await fetch(`${API_URL}/produtos/${id}`, { method: "DELETE" })
+    const data = await res.json()
+    if (res.ok) {
+      alert(data.message || "Produto excluído com sucesso.")
+      carregarProdutos()
+      carregarMovimentacoes()
+    } else {
+      alert("Erro: " + (data.error || "Falha ao excluir produto."))
+    }
+  } catch (err) {
+    console.error("Erro ao excluir produto:", err)
+  }
+}
+
+// ============================================================
+// 🧾 Atualização da lista de produtos no datalist
+// ============================================================
+
+function atualizarListaProdutos() {
+  const datalist = document.getElementById("listaProdutos")
+  if (!datalist) return
+  datalist.innerHTML = produtosArr.map((p) => `<option value="${p.descricao}">`).join("")
+}
+
+// ============================================================
+// 🔹 Destaque automático da seção no menu
+// ============================================================
+
+function ativarDestaqueNavbar() {
+  const links = document.querySelectorAll(".navbar-nav .nav-link")
+
+  window.addEventListener("scroll", () => {
+    let atual = ""
+
+    document.querySelectorAll("section, div[id]").forEach((sec) => {
+      const topo = window.scrollY
+      const offset = sec.offsetTop - 150
+      const altura = sec.offsetHeight
+      const id = sec.getAttribute("id")
+
+      if (topo >= offset && topo < offset + altura) atual = id
+    })
+
+    links.forEach((link) => {
+      link.classList.remove("active")
+      if (link.getAttribute("href") === "#" + atual) {
+        link.classList.add("active")
+      }
+    })
+  })
+}
+
+// ============================================================
+// 📊 Atualização do Dashboard
+// ============================================================
+
+function atualizarDashboard(movimentacoes) {
+  let totalEntradas = 0
+  let totalSaidas = 0
+
+  movimentacoes.forEach((mov) => {
+    if (mov.tipo === "Entrada") {
+      totalEntradas += mov.quantidade
+    } else if (mov.tipo === "Saída") {
+      totalSaidas += mov.quantidade
+    }
+  })
+
+  const saldoFinal = totalEntradas - totalSaidas
+
+  // Atualiza os elementos do dashboard
+  document.getElementById("totalEntradas").textContent = totalEntradas
+  document.getElementById("totalSaidas").textContent = totalSaidas
+  document.getElementById("saldoFinal").textContent = saldoFinal
+
+  // Adiciona classe de cor ao saldo final
+  const saldoElement = document.getElementById("saldoFinal")
+  saldoElement.classList.remove("text-success", "text-danger", "text-muted")
+  if (saldoFinal > 0) {
+    saldoElement.classList.add("text-success")
+  } else if (saldoFinal < 0) {
+    saldoElement.classList.add("text-danger")
+  } else {
+    saldoElement.classList.add("text-muted")
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
