@@ -174,7 +174,7 @@ app.get("/api/movimentacoes", async (req, res) => {
 // 🟢 NOVA ROTA: /api/entrada (corrigida)
 // =====================================
 app.post("/api/entrada", async (req, res) => {
-  const { descricao, quantidade, unidade, servidor_almoxarifado } = req.body
+  const { descricao, quantidade, unidade, servidor_almoxarifado, data_entrada } = req.body
 
   if (!descricao || !quantidade || !servidor_almoxarifado) {
     return res.status(400).json({ error: "Campos obrigatórios ausentes." })
@@ -197,6 +197,12 @@ app.post("/api/entrada", async (req, res) => {
     await produto.save()
   }
 
+    // Parse data_entrada as local date (yyyy-mm-dd) to avoid timezone issues
+    let dataMovimentacao = new Date()
+    if (data_entrada) {
+      const [ano, mes, dia] = data_entrada.split('-').map(Number)
+      dataMovimentacao = new Date(ano, mes - 1, dia, 12, 0, 0) // Set to noon to avoid DST issues
+    }
 
     // Registra movimentação de entrada
     const novaMovimentacao = new Movimentacao({
@@ -204,6 +210,7 @@ app.post("/api/entrada", async (req, res) => {
       quantidade,
       servidor_almoxarifado,
       produto_id: produto._id,
+      data: dataMovimentacao,
     })
     await novaMovimentacao.save()
 

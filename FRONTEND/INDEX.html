@@ -16,6 +16,12 @@
 
   <style>
     /* Padronização de botões de envio */
+    .btn-submit-entrada {
+      min-width: 220px;
+      display: block;
+      margin-left: auto;
+      margin-top: 2rem;
+    }
     .btn-submit {
       min-width: 220px;
       display: block;
@@ -158,8 +164,12 @@
             <label for="entrada_servidor" class="form-label">Servidor Almoxarifado</label>
             <input type="text" id="entrada_servidor" class="form-control" required placeholder="Nome do servidor">
           </div>
-          <div class="col-12 mt-3">
-            <button type="submit" class="btn gov-btn-green btn-submit">Registrar Entrada</button>
+          <div class="col-md-2">
+            <label for="data_entrada" class="form-label">Data</label>
+            <input type="date" id="data_entrada" class="form-control" required>
+          </div>
+          <div class="col-10 mt-3">
+            <button type="submit" class="btn gov-btn-green btn-submit-entrada">Registrar Entrada</button>
           </div>
         </form>
       </div>

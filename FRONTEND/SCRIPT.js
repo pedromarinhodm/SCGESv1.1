@@ -40,18 +40,24 @@ document.addEventListener("DOMContentLoaded", () => {
     renderizarProdutos(filtrados)
   })
 
-  // Setar data atual no campo de saída
+  // Setar data atual nos campos de data
   const hoje = new Date()
   const ano = hoje.getFullYear()
   const mes = String(hoje.getMonth() + 1).padStart(2, '0')
   const dia = String(hoje.getDate()).padStart(2, '0')
   const dataAtual = `${ano}-${mes}-${dia}`
   document.getElementById("data_saida").value = dataAtual
+  document.getElementById("data_entrada").value = dataAtual
 
-  // Resetar data para atual após submit
+  // Resetar datas para atual após submit
   document.getElementById("formMovimentacao").addEventListener("submit", () => {
     setTimeout(() => {
       document.getElementById("data_saida").value = dataAtual
+    }, 100)
+  })
+  document.getElementById("formEntrada").addEventListener("submit", () => {
+    setTimeout(() => {
+      document.getElementById("data_entrada").value = dataAtual
     }, 100)
   })
 
@@ -168,6 +174,7 @@ async function registrarEntradaSimplificada(e) {
   const quantidade = Number.parseInt(document.getElementById("entrada_quantidade").value)
   const unidade = document.getElementById("entrada_unidade").value.trim()
   const servidor = document.getElementById("entrada_servidor").value.trim()
+  const dataEntrada = document.getElementById("data_entrada").value.trim()
 
   if (!descricao || !quantidade || !servidor) {
     alert("Preencha todos os campos obrigatórios.")
@@ -183,6 +190,7 @@ async function registrarEntradaSimplificada(e) {
         quantidade,
         unidade,
         servidor_almoxarifado: servidor,
+        data_entrada: dataEntrada,
       }),
     })
 
