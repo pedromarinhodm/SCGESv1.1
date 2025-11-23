@@ -14,7 +14,7 @@ const __dirname = path.dirname(__filename)
 const mongoURI = "mongodb://127.0.0.1:27017/controle_estoque"
 
 mongoose
-  .connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .connect(mongoURI)
   .then(() => console.log("✅ Conectado ao MongoDB (controle_estoque)"))
   .catch((err) => console.error("❌ Erro ao conectar ao MongoDB:", err))
 
