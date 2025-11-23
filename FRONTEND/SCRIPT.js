@@ -30,8 +30,12 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("dataInicio").value = ""
     document.getElementById("dataFim").value = ""
     renderizarMovimentacoes(movimentacoesArr)
-    atualizarDashboard(movimentacoesArr)
+    atualizarDashboard(movimentacoesArr) 
   })
+
+  // ====== Botão Exportar PDF ======
+  document.getElementById("btnExportarPDF")?.addEventListener("click", exportarPDF);
+
 
   // ======= Busca de produtos em estoque =======
   document.getElementById("buscaProduto")?.addEventListener("input", (e) => {
@@ -465,6 +469,57 @@ function atualizarDashboard(movimentacoes) {
     saldoElement.classList.add("text-muted")
   }
 }
+
+// ============================================================
+  // 🧾 EXPORTAR PDF - Histórico com filtros aplicados
+  // ============================================================
+  function exportarPDF() {
+    const { jsPDF } = window.jspdf;
+
+    // Captura as linhas visíveis da tabela (já filtrada)
+    const rows = [...document.querySelectorAll("#tabelaMovimentacoes tbody tr")];
+
+    if (!rows.length || rows[0].children.length === 1) {
+        alert("Nenhuma movimentação para exportar.");
+        return;
+    }
+
+    const dados = rows.map((tr) => {
+        return [...tr.children].map((td) => td.innerText);
+    });
+
+    // Cabeçalhos da tabela
+    const colunas = [
+        "ID", "Produto", "Tipo", "Quantidade",
+        "Servidor Almoxarifado", "Setor",
+        "Servidor Retirada", "Data"
+    ];
+
+    const pdf = new jsPDF("landscape"); // paisagem deixa mais espaço
+
+    pdf.setFontSize(14);
+    pdf.text("Histórico de Movimentações - Almoxarifado", 14, 20);
+
+    // Filtros aplicados
+    const filtroProduto = document.getElementById("filtroProduto").value || "Todos";
+    const filtroTipo = document.getElementById("filtroTipo").value || "Todos";
+    const dataInicio = document.getElementById("dataInicio").value || "-";
+    const dataFim = document.getElementById("dataFim").value || "-";
+
+    pdf.setFontSize(10);
+    pdf.text(`Produto: ${filtroProduto} | Tipo: ${filtroTipo} | Período: ${dataInicio} até ${dataFim}`, 14, 28);
+
+    // Gera tabela no PDF
+    pdf.autoTable({
+        head: [colunas],
+        body: dados,
+        startY: 35,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [26, 65, 115] }, // azul gov
+    });
+
+    pdf.save("historico_movimentacoes.pdf");
+  }
 
 
 
