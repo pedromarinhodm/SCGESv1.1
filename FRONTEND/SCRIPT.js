@@ -470,13 +470,13 @@ function atualizarDashboard(movimentacoes) {
   }
 }
 
-// ============================================================
-  // 🧾 EXPORTAR PDF - Histórico com filtros aplicados
+  // ============================================================
+  // 🧾 EXPORTAR PDF - Histórico + Dashboard + Filtros
   // ============================================================
   function exportarPDF() {
     const { jsPDF } = window.jspdf;
 
-    // Captura as linhas visíveis da tabela (já filtrada)
+    // Captura linhas visíveis da tabela
     const rows = [...document.querySelectorAll("#tabelaMovimentacoes tbody tr")];
 
     if (!rows.length || rows[0].children.length === 1) {
@@ -484,42 +484,67 @@ function atualizarDashboard(movimentacoes) {
         return;
     }
 
-    const dados = rows.map((tr) => {
-        return [...tr.children].map((td) => td.innerText);
-    });
+    // Extrai valores da tabela
+    const dados = rows.map((tr) => [...tr.children].map((td) => td.innerText));
 
-    // Cabeçalhos da tabela
+    // Cabeçalhos
     const colunas = [
         "ID", "Produto", "Tipo", "Quantidade",
         "Servidor Almoxarifado", "Setor",
         "Servidor Retirada", "Data"
     ];
 
-    const pdf = new jsPDF("landscape"); // paisagem deixa mais espaço
+    const pdf = new jsPDF("landscape");
 
+    // -----------------------------------------------------------
+    // 🟦 TÍTULO
+    // -----------------------------------------------------------
     pdf.setFontSize(14);
-    pdf.text("Histórico de Movimentações - Almoxarifado", 14, 20);
+    pdf.text("Histórico de Movimentações - Almoxarifado", 14, 18);
 
-    // Filtros aplicados
+    // -----------------------------------------------------------
+    // 🟧 FILTROS APLICADOS
+    // -----------------------------------------------------------
     const filtroProduto = document.getElementById("filtroProduto").value || "Todos";
     const filtroTipo = document.getElementById("filtroTipo").value || "Todos";
     const dataInicio = document.getElementById("dataInicio").value || "-";
     const dataFim = document.getElementById("dataFim").value || "-";
 
     pdf.setFontSize(10);
-    pdf.text(`Produto: ${filtroProduto} | Tipo: ${filtroTipo} | Período: ${dataInicio} até ${dataFim}`, 14, 28);
+    pdf.text(`Produto: ${filtroProduto}`, 14, 27);
+    pdf.text(`Tipo: ${filtroTipo}`, 80, 27);
+    pdf.text(`Período: ${dataInicio} até ${dataFim}`, 140, 27);
 
-    // Gera tabela no PDF
+    // -----------------------------------------------------------
+    // 🟩 DADOS DO DASHBOARD (capturados do HTML)
+    // -----------------------------------------------------------
+    const totalEntradas = document.getElementById("totalEntradas").textContent.trim();
+    const totalSaidas = document.getElementById("totalSaidas").textContent.trim();
+    const saldoFinal = document.getElementById("saldoFinal").textContent.trim();
+
+    pdf.setFontSize(12);
+    pdf.text("Resumo do Estoque", 14, 38);
+
+    pdf.setFontSize(10);
+
+    pdf.text(`Total de Entradas: ${totalEntradas}`, 14, 46);
+    pdf.text(`Total de Saídas: ${totalSaidas}`, 80, 46);
+    pdf.text(`Saldo Atual: ${saldoFinal}`, 150, 46);
+
+    // -----------------------------------------------------------
+    // 📄 TABELA DE MOVIMENTAÇÕES
+    // -----------------------------------------------------------
     pdf.autoTable({
         head: [colunas],
         body: dados,
-        startY: 35,
+        startY: 55,
         styles: { fontSize: 8 },
-        headStyles: { fillColor: [26, 65, 115] }, // azul gov
+        headStyles: { fillColor: [26, 65, 115] },
     });
 
     pdf.save("historico_movimentacoes.pdf");
   }
+
 
 
 
