@@ -47,6 +47,7 @@
           <li class="nav-item"><a class="nav-link" href="#entrada">Entradas</a></li>
           <li class="nav-item"><a class="nav-link" href="#movimentacoes">Saídas</a></li>
           <li class="nav-item"><a class="nav-link" href="#historico">Histórico</a></li>
+          <li class="nav-item"><a class="nav-link" href="#formularios">Formulários</a></li>
         </ul>
       </div>
     </div>
@@ -276,7 +277,7 @@
         </div>
 
         <div class="mb-3 text-end">
-          <button id="btnExportarPDF" class="btn gov-btn-green">
+          <button id="btnExportarPDF" class="btn gov-btn-green btn-submit">
           Exportar PDF
           </button>
         </div>
@@ -300,6 +301,86 @@
         </div>
       </div>
     </div>
+
+    <!-- ====================== FORMULÁRIOS ====================== -->
+<div id="formularios" class="card mb-4 shadow-sm">
+  <div class="card-header gov-header">Formulários</div>
+  <div class="card-body">
+
+    <!-- Filtros + Botão Anexar -->
+    <div class="row g-3 mb-3 align-items-end">
+      <div class="col-md-3">
+        <label for="formFiltroInicio" class="form-label">Data Inicial</label>
+        <input type="date" id="formFiltroInicio" class="form-control">
+      </div>
+
+      <div class="col-md-3">
+        <label for="formFiltroFim" class="form-label">Data Final</label>
+        <input type="date" id="formFiltroFim" class="form-control">
+      </div>
+
+      <div class="col-md-3 d-grid">
+        <button id="btnLimparFormularios" class="btn btn-outline-secondary w-100">
+          Limpar Filtros
+        </button>
+      </div>
+
+      <div class="col-md-3 d-grid">
+        <button id="btnAnexarFormulario" class="btn gov-btn-blue w-100"
+                data-bs-toggle="modal" data-bs-target="#modalAnexarFormulario">
+          Anexar Formulário
+        </button>
+      </div>
+    </div>
+
+    <!-- TABELA DE FORMULÁRIOS -->
+    <div class="table-responsive">
+      <table class="table table-bordered text-center align-middle" id="tabelaFormularios">
+        <thead class="table-light">
+          <tr>
+            <th>Data Inicial</th>
+            <th>Data Final</th>
+            <th>Arquivo</th>
+            <th>Upload</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="6" class="text-muted">Nenhum formulário encontrado</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+  <!-- MODAL PARA ANEXAR FORMULÁRIO -->
+  <div class="modal fade" id="modalAnexarFormulario" tabindex="-1">
+    <div class="modal-dialog">
+      <form id="formAnexarFormulario" class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Anexar Formulário (PDF)</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <label class="form-label">Data Inicial</label>
+          <input type="date" id="anexo_data_inicial" class="form-control mb-2" required>
+
+          <label class="form-label">Data Final</label>
+          <input type="date" id="anexo_data_final" class="form-control mb-2" required>
+
+          <label class="form-label">Arquivo PDF</label>
+          <input type="file" id="anexo_arquivo" name="arquivo" accept="application/pdf" class="form-control" required>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn gov-btn-green">Enviar</button>
+        </div>
+      </form>
+    </div>
+  </div>    
   </div>
 
   <!-- Bootstrap -->
@@ -309,6 +390,8 @@
   <!-- jsPDF + AutoTable -->
   <script src="https://cdn.jsdelivr.net/npm/jspdf/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable"></script>
+
+  
 
 </body>
 </html>

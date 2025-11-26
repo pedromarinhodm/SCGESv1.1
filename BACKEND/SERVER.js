@@ -4,9 +4,16 @@ import bodyParser from "body-parser"
 import mongoose from "mongoose"
 import path from "path"
 import { fileURLToPath } from "url"
+import multer from "multer";
+import { ObjectId } from "mongodb";
+
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+
+// multer recebe arquivo em memória (buffer)
+const upload = multer({ storage: multer.memoryStorage() });
+
 
 // =====================================
 // 🔗 Conexão com o MongoDB local
@@ -17,6 +24,22 @@ mongoose
   .connect(mongoURI)
   .then(() => console.log("✅ Conectado ao MongoDB (controle_estoque)"))
   .catch((err) => console.error("❌ Erro ao conectar ao MongoDB:", err))
+
+//======================================
+// Configurar GridFS
+//======================================
+
+let gridfsBucket;
+
+mongoose.connection.once("open", () => {
+  gridfsBucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+    bucketName: "formularios"
+  });
+
+  console.log("📁 GridFS inicializado (bucket: formularios)");
+});
+
+
 
 // =====================================
 // 🧩 Modelos (Schemas)
@@ -66,10 +89,15 @@ const Movimentacao = mongoose.model("Movimentacao", movimentacaoSchema)
 const app = express()
 app.use(cors())
 app.use(bodyParser.json())
+// Middleware global — permite streaming de PDF sem sobrescrever headers
 app.use((req, res, next) => {
-  res.setHeader("Content-Type", "application/json; charset=utf-8")
-  next()
-})
+  // Só altera o header se a rota NÃO for PDF
+  if (!req.path.includes("/formularios/")) {
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+  }
+  next();
+});
+
 
 // =====================================
 // 🟢 Rotas de Produtos
@@ -264,11 +292,170 @@ app.post("/api/saida", async (req, res) => {
   }
 })
 
+// ================== UPLOAD DE FORMULÁRIO ==================
+app.post("/api/formularios", upload.single("arquivo"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "Nenhum arquivo enviado." });
+    }
+
+    const { data_inicial, data_final } = req.body;
+
+    // cria upload stream do GridFS
+    const uploadStream = gridfsBucket.openUploadStream(
+      Date.now() + "-" + req.file.originalname,
+      {
+        contentType: req.file.mimetype,
+        metadata: {
+          data_inicial,
+          data_final
+        }
+      }
+    );
+
+    // grava o buffer enviado pelo multer
+    uploadStream.end(req.file.buffer);
+
+   uploadStream.on("finish", async () => {
+        await mongoose.connection.db.collection("formularios_meta").insertOne({
+        fileId: uploadStream.id,           
+        filename: uploadStream.filename,   
+        data_inicial,
+        data_final,
+        uploadDate: new Date()
+      });
+
+      res.json({
+        message: "Formulário salvo com sucesso",
+        id: uploadStream.id   
+      });
+
+    });
+
+    uploadStream.on("error", (err) => {
+      console.error("Erro no GridFS:", err);
+      res.status(500).json({ error: "Erro ao salvar PDF no servidor." });
+    });
+
+  } catch (error) {
+    console.error("Erro:", error);
+    res.status(500).json({ error: "Erro interno no servidor." });
+  }
+});
+
+// Listar formulários
+app.get("/api/formularios", async (req, res) => {
+  const docs = await mongoose.connection.db
+    .collection("formularios_meta")
+    .find({})
+    .sort({ uploadDate: -1 })
+    .toArray();0
+    
+
+  // Normalize fileId to string for easier client usage
+  const normalized = docs.map(d => ({
+    _id: d._id,
+    fileId: d.fileId ? d.fileId.toString() : null,
+    filename: d.filename,
+    data_inicial: d.data_inicial,
+    data_final: d.data_final,
+    uploadDate: d.uploadDate
+  }));
+
+  res.json(normalized);
+});
+
+// Visualizar formulários
+app.get("/api/formularios/:id/view", async (req, res) => {
+  try {
+    const metaId = new mongoose.Types.ObjectId(req.params.id);
+    const meta = await mongoose.connection.db.collection("formularios_meta").findOne({ _id: metaId });
+    if (!meta) return res.status(404).json({ error: "Arquivo não encontrado" });
+
+    const fileId = meta.fileId instanceof mongoose.Types.ObjectId ? meta.fileId : new mongoose.Types.ObjectId(meta.fileId);
+
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": "inline"
+    });
+
+    gridfsBucket.openDownloadStream(fileId).pipe(res);
+  } catch (err) {
+    console.error("Erro ao visualizar formulário:", err);
+    res.status(500).json({ error: "Erro ao visualizar formulário" });
+  }
+});
+
+// Download formulário
+app.get("/api/formularios/:id/download", async (req, res) => {
+  try {
+    const metaId = new mongoose.Types.ObjectId(req.params.id);
+    const meta = await mongoose.connection.db.collection("formularios_meta").findOne({ _id: metaId });
+    if (!meta) return res.status(404).json({ error: "Arquivo não encontrado" });
+
+    const fileId = meta.fileId instanceof mongoose.Types.ObjectId ? meta.fileId : new mongoose.Types.ObjectId(meta.fileId);
+
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": "attachment"
+    });
+
+    gridfsBucket.openDownloadStream(fileId).pipe(res);
+  } catch (err) {
+    console.error("Erro ao fazer download do formulário:", err);
+    res.status(500).json({ error: "Erro ao fazer download do formulário" });
+  }
+});
+
+// DELETE - excluir formulário
+app.delete("/api/formularios/:id", async (req, res) => {
+  try {
+    const metaId = new mongoose.Types.ObjectId(req.params.id);
+
+    const meta = await mongoose.connection.db.collection("formularios_meta").findOne({ _id: metaId });
+    if (!meta) return res.status(404).json({ error: "Arquivo não encontrado" });
+
+    const fileId = meta.fileId instanceof mongoose.Types.ObjectId ? meta.fileId : new mongoose.Types.ObjectId(meta.fileId);
+
+    // Exclui do GridFS
+    try {
+      await gridfsBucket.delete(fileId);
+    } catch (gfsErr) {
+      if (!gfsErr.message || !gfsErr.message.includes("File not found")) {
+        console.error("Erro ao excluir arquivo no GridFS:", gfsErr);
+        return res.status(500).json({ error: "Erro ao excluir arquivo no GridFS" });
+      }
+      // caso seja 'File not found', prossegue para excluir metadados
+    }
+
+    // Exclui metadados
+    await mongoose.connection.db.collection("formularios_meta").deleteOne({ _id: metaId });
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error("Erro ao excluir arquivo:", error);
+    res.status(500).json({ error: "Erro ao excluir arquivo" });
+  }
+});
+
+
+
+
+
+
 // =====================================
 // 🚀 Servidor
 // =====================================
 const PORT = 3000
 app.listen(PORT, () => console.log(`🚀 Servidor rodando em http://localhost:${PORT}`))
+//=======================================================================================
+
+
+
+
+
+
 
 
 

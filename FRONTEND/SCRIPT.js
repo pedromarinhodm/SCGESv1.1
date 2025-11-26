@@ -545,6 +545,192 @@ function atualizarDashboard(movimentacoes) {
     pdf.save("historico_movimentacoes.pdf");
   }
 
+  // ============================ FORMULÁRIOS ============================
+const API_FORM = "http://localhost:3000/api/formularios";
+let listaFormularios = [];
+
+// Inicialização
+document.addEventListener("DOMContentLoaded", () => {
+  carregarFormularios();
+
+  document.getElementById("formFiltroInicio").addEventListener("change", filtrarFormularios);
+  document.getElementById("formFiltroFim").addEventListener("change", filtrarFormularios);
+
+  document.getElementById("btnLimparFormularios").addEventListener("click", () => {
+    document.getElementById("formFiltroInicio").value = "";
+    document.getElementById("formFiltroFim").value = "";
+    renderFormularios(listaFormularios);
+  });
+
+  document.getElementById("formAnexarFormulario")
+    .addEventListener("submit", enviarFormulario);
+});
+
+// Carregar formulários
+async function carregarFormularios() {
+  try {
+    const res = await fetch(API_FORM);
+    if (!res.ok) throw new Error("Erro ao buscar formulários");
+
+    listaFormularios = await res.json();
+    renderFormularios(listaFormularios);
+
+  } catch (err) {
+    console.error(err);
+    alert("Não foi possível carregar a lista de formulários.");
+  }
+}
+
+// Renderizar tabela 
+function renderFormularios(lista) {
+  const tbody = document.querySelector("#tabelaFormularios tbody");
+  tbody.innerHTML = "";
+
+  if (!lista || lista.length === 0) {
+    tbody.innerHTML = `
+      <tr><td colspan="5" class="text-muted text-center">
+      Nenhum formulário encontrado
+      </td></tr>`;
+    return;
+  }
+
+  lista.forEach(item => {
+    const dataInicial = item.data_inicial
+      ? new Date(item.data_inicial + "T00:00:00").toLocaleDateString()
+      : "-";
+
+    const dataFinal = item.data_final
+      ? new Date(item.data_final + "T00:00:00").toLocaleDateString()
+      : "-";
+
+    const upload = item.uploadDate
+      ? new Date(item.uploadDate).toLocaleDateString()
+      : "-";
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${dataInicial}</td>
+      <td>${dataFinal}</td>
+      <td>${item.filename || "-"}</td>
+      <td>${upload}</td>
+
+      <td>
+        <button class="btn btn-sm btn-outline-primary"
+                onclick="visualizarFormulario('${item._id}')">Visualizar</button>
+
+        <button class="btn btn-sm btn-outline-success"
+                onclick="baixarFormulario('${item._id}', '${item.filename}')">Baixar</button>
+
+        <button class="btn btn-sm btn-outline-danger"
+                onclick="excluirFormulario('${item._id}')">Excluir</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+
+// Filtros de data
+function filtrarFormularios() {
+  const ini = document.getElementById("formFiltroInicio").value;
+  const fim = document.getElementById("formFiltroFim").value;
+
+  const di = ini ? new Date(`${ini}T00:00:00`) : null;
+  const df = fim ? new Date(`${fim}T23:59:59`) : null;
+
+  const filtrado = listaFormularios.filter(f => {
+    const d = new Date(f.uploadDate);
+    if (di && d < di) return false;
+    if (df && d > df) return false;
+    return true;
+  });
+
+  renderFormularios(filtrado);
+}
+
+// Upload
+async function enviarFormulario(e) {
+  e.preventDefault();
+
+  const inputArquivo = document.getElementById("anexo_arquivo");
+  if (!inputArquivo.files.length) {
+    alert("Selecione um arquivo antes de enviar.");
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append("data_inicial", document.getElementById("anexo_data_inicial").value);
+  fd.append("data_final", document.getElementById("anexo_data_final").value);
+  fd.append("arquivo", inputArquivo.files[0]);
+
+  try {
+    const res = await fetch(API_FORM, { method: "POST", body: fd });
+    const json = await res.json();
+
+    if (!res.ok) {
+      alert("Erro ao anexar: " + (json.error || "Falha desconhecida."));
+      return;
+    }
+
+    alert("Formulário anexado com sucesso!");
+
+    // Limpa formulário
+    e.target.reset();
+
+    // Fecha modal com segurança
+    const modalEl = document.getElementById("modalAnexarFormulario");
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+
+    // Recarrega lista
+    carregarFormularios();
+
+  } catch (err) {
+    console.error("Erro ao enviar formulário:", err);
+    alert("Não foi possível enviar o arquivo.");
+  }
+}
+
+// Visualizar formulário
+function visualizarFormulario(id) {
+  window.open(`${API_FORM}/${id}/view`, "_blank");
+}
+
+// Download formulário
+function baixarFormulario(id, nome) {
+  const url = `${API_FORM}/${id}/download`;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nome || "arquivo.pdf";
+  a.click();
+}
+
+// Excluir formulário
+async function excluirFormulario(id) {
+  if (!confirm("Deseja realmente excluir este formulário?")) return;
+
+  try {
+    const res = await fetch(`${API_FORM}/${id}`, { method: "DELETE" });
+
+    if (!res.ok) {
+      const err = await res.json();
+      alert("Erro ao excluir: " + (err.error || "Falha desconhecida"));
+      return;
+    }
+
+    alert("Formulário excluído com sucesso!");
+    carregarFormularios();
+
+  } catch (error) {
+    console.error(error);
+    alert("Erro ao excluir formulário.");
+  }
+}
+
+
+
+
+
 
 
 
