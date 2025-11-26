@@ -44,6 +44,9 @@ document.addEventListener("DOMContentLoaded", () => {
     renderizarProdutos(filtrados)
   })
 
+  // ======= Botão Exportar PDF do Estoque Atual =======
+  document.getElementById("btnExportarProdutos")?.addEventListener("click", exportarProdutosPDF);
+
   // Setar data atual nos campos de data
   const hoje = new Date()
   const ano = hoje.getFullYear()
@@ -474,6 +477,10 @@ function atualizarDashboard(movimentacoes) {
   // 🧾 EXPORTAR PDF - Histórico + Dashboard + Filtros
   // ============================================================
   function exportarPDF() {
+    if (!window.jspdf) {
+      alert('Biblioteca jsPDF não foi carregada. Atualize a página e tente novamente.');
+      return;
+    }
     const { jsPDF } = window.jspdf;
 
     // Captura linhas visíveis da tabela
@@ -484,8 +491,8 @@ function atualizarDashboard(movimentacoes) {
         return;
     }
 
-    // Extrai valores da tabela
-    const dados = rows.map((tr) => [...tr.children].map((td) => td.innerText));
+    // Extrai valores da tabela (somente as 4 primeiras colunas: ID, Descrição, Quantidade, Unidade)
+    const dados = rows.map((tr) => [...tr.children].slice(0, 4).map((td) => td.innerText.trim()));
 
     // Cabeçalhos
     const colunas = [
@@ -544,6 +551,53 @@ function atualizarDashboard(movimentacoes) {
 
     pdf.save("historico_movimentacoes.pdf");
   }
+
+    // ============================================================
+    // 🧾 EXPORTAR PDF - Estoque Atual (Produtos)
+    // ============================================================
+    function exportarProdutosPDF() {
+        if (!window.jspdf) {
+          alert('Biblioteca jsPDF não foi carregada. Atualize a página e tente novamente.');
+          return;
+        }
+        const { jsPDF } = window.jspdf;
+
+      // Captura linhas visíveis da tabela de produtos
+      const rows = [...document.querySelectorAll("#tabelaProdutos tbody tr")];
+
+      if (!rows.length || rows[0].children.length === 1) {
+        alert("Nenhum produto para exportar.");
+        return;
+      }
+
+      // Extrai valores da tabela
+      const dados = rows.map((tr) => [...tr.children].map((td) => td.innerText));
+
+      // Cabeçalhos
+      const colunas = ["ID", "Descrição", "Quantidade", "Unidade"];
+
+      const pdf = new jsPDF("portrait", "mm", "a4");
+
+      // Título
+      pdf.setFontSize(14);
+      pdf.text("Estoque Atual - Almoxarifado", 14, 18);
+
+      // Data de geração
+      const agora = new Date();
+      pdf.setFontSize(10);
+      pdf.text(`Gerado em: ${agora.toLocaleString()}`, 14, 26);
+
+      // Tabela de Produtos
+      pdf.autoTable({
+        head: [colunas],
+        body: dados,
+        startY: 36,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [26, 65, 115] },
+      });
+
+      pdf.save("estoque_atual.pdf");
+    }
 
   // ============================ FORMULÁRIOS ============================
 const API_FORM = "http://localhost:3000/api/formularios";

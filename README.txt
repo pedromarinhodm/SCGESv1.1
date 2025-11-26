@@ -35,11 +35,13 @@
 - **Dashboard dinâmico**: Mostra totais de entradas, saídas e saldo final em tempo real
 - **Ordenação automática**: Movimentações mais recentes primeiro
 
-### 5. INTERFACE MODERNA E RESPONSIVA
-- **Design governamental**: Cores e layout adequados para órgãos públicos
-- **Navegação intuitiva**: Menu fixo com destaque automático da seção atual
-- **Responsividade total**: Funciona perfeitamente em desktop, tablet e mobile
-- **Experiência fluida**: Transições suaves e feedback visual imediato
+### 5. GERAÇÃO DE RELATÓRIOS
+- Permite exportar relatórios do histórico de movimentações em PDF
+- Relatórios são gerados dinamicamente considerando os dados do dashboard e os filtros aplicados
+
+### 6. FORMULÁRIOS
+- Permite anexar formulários em pdf
+- Permite visualização, download e exclusão de arquivos
 
 ## BENEFÍCIOS
 
@@ -83,7 +85,7 @@
 ### 1. PREPARAÇÃO INICIAL
 1. Descompacte o arquivo do sistema em uma pasta de sua escolha
 2. Certifique-se de que a pasta não está em local protegido pelo Windows
-3. Execute o arquivo `iniciar.bat` como administrador na primeira vez
+3. Execute o arquivo `iniciar.bat` 
 
 ### 2. INICIALIZAÇÃO AUTOMÁTICA
 1. Clique duas vezes no arquivo `iniciar.bat`
@@ -132,6 +134,10 @@
 3. Clique em "Limpar filtros" para ver tudo novamente
 4. Observe o dashboard com totais atualizados
 
+### EXPORTANDO DADOS PARA PDF
+1. Aplique filtros, se necessário
+2. Clique em Exportar PDF
+
 ### 4. MANUTENÇÃO E BACKUP
 
 #### BACKUP DOS DADOS
@@ -140,14 +146,9 @@
 - Para restauração, substitua a pasta pelos dados backupados
 
 #### REINICIALIZAÇÃO
+- Feche as janelas de terminal abertas
 - Sempre use o `iniciar.bat` para iniciar o sistema
-- Não feche as janelas do terminal abertas
 - O sistema pode ser usado enquanto as janelas estiverem abertas
-
-#### PROBLEMAS COMUNS
-- **Porta ocupada**: Se aparecer erro de porta, feche outros programas usando a porta 3000
-- **MongoDB não inicia**: Verifique se há outro MongoDB rodando ou arquivos corrompidos
-- **Interface não abre**: Certifique-se de que o navegador não está bloqueando pop-ups
 
 ## SUPORTE TÉCNICO
 
@@ -164,9 +165,7 @@ Em caso de problemas:
 3. Reinicie o sistema usando `iniciar.bat`
 
 ## VERSÃO ATUAL
-Versão: 1.0 (Finalizada)
-Data de lançamento: [14/11/2025]
-Desenvolvido por: Pedro D. C. Marinho
+Versão: 1.1 
 
 ## LICENÇA
 Este software é propriedade do órgão público municipal e seu uso é restrito aos servidores autorizados.
